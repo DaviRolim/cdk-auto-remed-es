@@ -10,16 +10,22 @@ from aws_cdk import (
     aws_sns as sns,
     aws_sns_subscriptions as subscriptions,
     aws_apigateway as apigateway,
-    aws_iam as iam
+    aws_iam as iam,
+    aws_s3 as s3,
+    aws_s3_deployment as s3deploy
 )
-
-
 
 
 class CdkworkshopStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
+        
+        my_bucket = s3.Bucket(self, 'cdkbucket', bucket_name='cdktestbucket2710')
+        s3deploy.BucketDeployment(self, "DeployWebsite",
+            sources=[s3deploy.Source.asset("./lambda")],
+            destination_bucket=my_bucket
+        )
 
         email_param = core.CfnParameter(self, 'email', description='email for sns subscription')
         
@@ -29,7 +35,7 @@ class CdkworkshopStack(core.Stack):
         )
         #API Gateway for approval or reject the email
         email_approval = _lambda.Function(self, 'RespondEmailApproval',
-            code=_lambda.Code.asset('lambda'),
+            code=_lambda.Code.from_asset('lambda'),
             runtime=_lambda.Runtime.NODEJS_12_X,
             handler='lambda_approval.handler',
             timeout=core.Duration.seconds(30),
@@ -51,7 +57,7 @@ class CdkworkshopStack(core.Stack):
         my_lambda = _lambda.Function(
             self, 'custom_config_ES',
             runtime=_lambda.Runtime.PYTHON_3_7,
-            code=_lambda.Code.asset('lambda'),
+            code=_lambda.Code.from_asset('lambda'),
             handler='custom_config.handler',
             timeout=core.Duration.seconds(30)
         )
@@ -76,7 +82,7 @@ class CdkworkshopStack(core.Stack):
 
      # Start step functions
         send_email_approval = _lambda.Function(self, 'SendEmailApproval',
-            code=_lambda.Code.asset('lambda'),
+            code=_lambda.Code.from_asset('lambda'),
             runtime=_lambda.Runtime.NODEJS_12_X,
             handler='sendEmailApproval.handler',
             timeout=core.Duration.seconds(30),
@@ -91,7 +97,7 @@ class CdkworkshopStack(core.Stack):
         check_status_dynamo = _lambda.Function(
             self, 'CheckStatus',
             runtime=_lambda.Runtime.PYTHON_3_7,
-            code=_lambda.Code.asset('lambda'),
+            code=_lambda.Code.from_asset('lambda'),
             handler='check_dynamo_status.handler',
             timeout=core.Duration.seconds(30),
             environment={
@@ -101,7 +107,7 @@ class CdkworkshopStack(core.Stack):
         restric_es_policy = _lambda.Function(
             self, 'RestricESpolicy',
             runtime=_lambda.Runtime.PYTHON_3_7,
-            code=_lambda.Code.asset('lambda'),
+            code=_lambda.Code.from_asset('lambda'),
             handler='restrict_es_policy.handler',
             timeout=core.Duration.seconds(30),
             environment={
