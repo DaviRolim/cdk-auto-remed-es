@@ -11,20 +11,22 @@ from aws_cdk import (
     aws_sns_subscriptions as subscriptions,
     aws_apigateway as apigateway,
     aws_iam as iam,
-    aws_s3 as s3,
-    aws_s3_deployment as s3deploy
+    aws_s3_assets as assets
 )
-
+import os
+from utils import get_string_code
 
 class CdkworkshopStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
-        
-        my_bucket = s3.Bucket(self, 'cdkbucket', bucket_name='cdktestbucket2710')
-        s3deploy.BucketDeployment(self, "DeployWebsite",
-            sources=[s3deploy.Source.asset("./lambda")],
-            destination_bucket=my_bucket
+        function_path = os.getcwd() + '/lambda/'
+        code = get_string_code(function_path + 'custom_config.py')
+        _lambda.Function(self, 'NEW_customConfig',
+            code=_lambda.Code.inline(code),
+            runtime=_lambda.Runtime.PYTHON_3_7,
+            handler='index.handler',
+            timeout=core.Duration.seconds(30)
         )
 
         email_param = core.CfnParameter(self, 'email', description='email for sns subscription')
@@ -84,7 +86,7 @@ class CdkworkshopStack(core.Stack):
         send_email_approval = _lambda.Function(self, 'SendEmailApproval',
             code=_lambda.Code.from_asset('lambda'),
             runtime=_lambda.Runtime.NODEJS_12_X,
-            handler='sendEmailApproval.handler',
+            handler='SendEmailApproval.handler',
             timeout=core.Duration.seconds(30),
             environment={
                 'SNSTOPIC' : my_topic.topic_arn,
