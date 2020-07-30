@@ -12,10 +12,10 @@ def check_public_policy(policy):
     return open_policy
 
 def evaluate_compliance(config_item):
-    configuration = config_item['configuration']
     compliance_status = dict(complianceType='COMPLIANT', annotation='Restricted ES domain')
-    if 'endpoint' in configuration:
-        endpoint = configuration['endpoint']
+    try:
+        endpoint = config_item['configuration']['endpoint']
+        print('endpoint: ', endpoint)
         response = http.request('GET', f'http://{endpoint}')
         open_endpoint = response.status == 200
         access_policy = config_item['configuration']['accessPolicies']
@@ -23,8 +23,11 @@ def evaluate_compliance(config_item):
         print(f'is policy open? {open_policy} - is endpoint accessible? {open_endpoint}')
         if(open_endpoint or open_policy): 
             compliance_status =  dict(complianceType='NON_COMPLIANT', annotation='Endpoint accessible for everyone or policy too explicit')
+    except Exception as e:
+        print(f'catched error -> {e}')
+    finally:
+        return compliance_status
 
-    return compliance_status
 
 def handler(event, context):
     print(event)

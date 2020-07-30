@@ -21,13 +21,11 @@ class CdkworkshopStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
         function_path = os.getcwd() + '/lambda/'
-        code = get_string_code(function_path + 'custom_config.py')
-        _lambda.Function(self, 'NEW_customConfig',
-            code=_lambda.Code.inline(code),
-            runtime=_lambda.Runtime.PYTHON_3_7,
-            handler='index.handler',
-            timeout=core.Duration.seconds(30)
-        )
+        code_custom_config = get_string_code(function_path + 'custom_config.py')
+        code_lambda_approval = get_string_code(function_path + 'lambda_approval.js')
+        code_restrict_es_policy = get_string_code(function_path + 'restrict_es_policy.py')
+        code_send_email_approval = get_string_code(function_path + 'sendEmailApproval.js')
+        code_check_dynamo_status = get_string_code(function_path + 'check_dynamo_status.py')
 
         email_param = core.CfnParameter(self, 'email', description='email for sns subscription')
         
@@ -37,9 +35,9 @@ class CdkworkshopStack(core.Stack):
         )
         #API Gateway for approval or reject the email
         email_approval = _lambda.Function(self, 'RespondEmailApproval',
-            code=_lambda.Code.from_asset('lambda'),
+            code=_lambda.Code.inline(code_lambda_approval),
             runtime=_lambda.Runtime.NODEJS_12_X,
-            handler='lambda_approval.handler',
+            handler='index.handler',
             timeout=core.Duration.seconds(30),
             environment={
                 'DYNAMOTABLE' : table.table_name
@@ -59,8 +57,8 @@ class CdkworkshopStack(core.Stack):
         my_lambda = _lambda.Function(
             self, 'custom_config_ES',
             runtime=_lambda.Runtime.PYTHON_3_7,
-            code=_lambda.Code.from_asset('lambda'),
-            handler='custom_config.handler',
+            code=_lambda.Code.inline(code_custom_config),
+            handler='index.handler',
             timeout=core.Duration.seconds(30)
         )
 
@@ -84,9 +82,9 @@ class CdkworkshopStack(core.Stack):
 
      # Start step functions
         send_email_approval = _lambda.Function(self, 'SendEmailApproval',
-            code=_lambda.Code.from_asset('lambda'),
+            code=_lambda.Code.inline(code_send_email_approval),
             runtime=_lambda.Runtime.NODEJS_12_X,
-            handler='SendEmailApproval.handler',
+            handler='index.handler',
             timeout=core.Duration.seconds(30),
             environment={
                 'SNSTOPIC' : my_topic.topic_arn,
@@ -99,8 +97,8 @@ class CdkworkshopStack(core.Stack):
         check_status_dynamo = _lambda.Function(
             self, 'CheckStatus',
             runtime=_lambda.Runtime.PYTHON_3_7,
-            code=_lambda.Code.from_asset('lambda'),
-            handler='check_dynamo_status.handler',
+            code=_lambda.Code.inline(code_check_dynamo_status),
+            handler='index.handler',
             timeout=core.Duration.seconds(30),
             environment={
                 'DYNAMOTABLE' : table.table_name
@@ -109,8 +107,8 @@ class CdkworkshopStack(core.Stack):
         restric_es_policy = _lambda.Function(
             self, 'RestricESpolicy',
             runtime=_lambda.Runtime.PYTHON_3_7,
-            code=_lambda.Code.from_asset('lambda'),
-            handler='restrict_es_policy.handler',
+            code=_lambda.Code.inline(code_restrict_es_policy),
+            handler='index.handler',
             timeout=core.Duration.seconds(30),
             environment={
                 'DYNAMOTABLE' : table.table_name
