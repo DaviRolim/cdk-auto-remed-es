@@ -46,4 +46,5 @@ def handler(event, context):
   resource = event_input['detail']['requestParameters']['evaluations']
   es_domain = resource[0]['complianceResourceId']
   deny_public_access(es_domain)
-  update_status(execution_arn)
+  dynamo_response = update_status(execution_arn)
+  return dynamo_response

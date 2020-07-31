@@ -2,6 +2,12 @@ import boto3
 import uuid
 import os
 
+def item_mapper(item):
+  new_item = {}
+  for key, value in item.items():
+    new_item[key] = value.get('S')
+  return new_item
+
 def handler(event, context):
     print(event)
     sts_connection = boto3.client('sts')
@@ -27,10 +33,12 @@ def handler(event, context):
     item = records['dynamodb']['NewImage']
     response = 'success'
     if item.get('status').get('S') in ['non_compliant', 'compliant']:
-        print(item)
         item['ID'] = {'S': str(uuid.uuid4())}
+        print(item)
         try:
-            response = table.put_item(Item=item)
+            new_item = item_mapper(item)
+            new_item['DATE_TIME'] = new_item.pop('time')
+            response = table.put_item(Item=new_item)
         except Exception as e:
             print(e)
             return "catched error -> " + str(e)

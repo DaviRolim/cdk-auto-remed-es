@@ -173,7 +173,9 @@ class CdkworkshopStack(core.Stack):
         # Replication to global table
         cross_access_role_arn = 'arn:aws:iam::540332926089:role/Capstone_DynamoDBFullAccess'
         dynamodb_stream_source = event_source.DynamoEventSource(table=table,
-                                                                starting_position=_lambda.StartingPosition.LATEST)
+                                                                starting_position=_lambda.StartingPosition.LATEST,
+                                                                batch_size=1,
+                                                                retry_attempts=1)
         replicate_to_global = _lambda.Function(self, 'replicate_stream_global',
             code=_lambda.Code.inline(code_replicate_to_global),
             runtime=_lambda.Runtime.PYTHON_3_7,
