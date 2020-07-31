@@ -8,6 +8,12 @@ exports.handler = (event, context, callback) => {
     const resourceId = executionContext.Execution.Input.detail.requestParameters.evaluations[0].complianceResourceId
     console.log('resourceId ->' + resourceId)
 
+    const resourceType = executionContext.Execution.Input.detail.requestParameters.evaluations[0].complianceResourceType
+    console.log('resourceType ->' + resourceType)
+
+    const configAnnotation = executionContext.Execution.Input.detail.requestParameters.evaluations[0].annotation
+    console.log('annotation (remediation_type) -> ' + configAnnotation)
+
     console.log('executionContext= ' + executionContext);
     const executionArn = executionContext.Execution.Id;
 
@@ -68,7 +74,9 @@ exports.handler = (event, context, callback) => {
         "time": executionContext.Execution.Input.time,
         "account_id": executionContext.Execution.Input.account,
         "resource_id": resourceId,
-        "status": "started"
+        "resource_type": resourceType,
+        "remediation_type": configAnnotation,
+        "status": "non_compliant"
       }
     };
     console.log("Adding a new item...");

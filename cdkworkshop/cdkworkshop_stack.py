@@ -11,7 +11,8 @@ from aws_cdk import (
     aws_sns_subscriptions as subscriptions,
     aws_apigateway as apigateway,
     aws_iam as iam,
-    aws_s3_assets as assets
+    aws_s3_assets as assets,
+    aws_lambda_event_sources as event_source
 )
 import os
 from utils import get_string_code
@@ -26,12 +27,14 @@ class CdkworkshopStack(core.Stack):
         code_restrict_es_policy = get_string_code(function_path + 'restrict_es_policy.py')
         code_send_email_approval = get_string_code(function_path + 'sendEmailApproval.js')
         code_check_dynamo_status = get_string_code(function_path + 'check_dynamo_status.py')
+        code_replicate_to_global = get_string_code(function_path + 'replicate_to_global_table.py')
 
         email_param = core.CfnParameter(self, 'email', description='email for sns subscription')
         
         # Dynamo Table
         table = dynamodb.Table(self, "auto-remediation",
-            partition_key=dynamodb.Attribute(name="execution_arn", type=dynamodb.AttributeType.STRING)
+            partition_key=dynamodb.Attribute(name="execution_arn", type=dynamodb.AttributeType.STRING),
+            stream=dynamodb.StreamViewType.NEW_IMAGE
         )
         #API Gateway for approval or reject the email
         email_approval = _lambda.Function(self, 'RespondEmailApproval',
@@ -73,13 +76,12 @@ class CdkworkshopStack(core.Stack):
             "evaluations": {
                 "complianceType": [
                 "NON_COMPLIANT"
-                ]
+                ],
+                "complianceResourceType": ["AWS::Elasticsearch::Domain"]
             }
           }
         }
-        event_pattern = events.EventPattern(detail=rule_detail)
-
-
+        event_pattern = events.EventPattern(source=["aws.config"], detail=rule_detail)
      # Start step functions
         send_email_approval = _lambda.Function(self, 'SendEmailApproval',
             code=_lambda.Code.inline(code_send_email_approval),
@@ -150,7 +152,7 @@ class CdkworkshopStack(core.Stack):
                                 .next(get_status)
                                 .next(sfn.Choice(self, "Job Complete?")
                                 .when(sfn.Condition.string_equals("$.status.Payload.status", "Rejected!"), wait_x)
-                                .when(sfn.Condition.string_equals("$.status.Payload.status", "started"), final_task)
+                                .when(sfn.Condition.string_equals("$.status.Payload.status", "non_compliant"), final_task)
                                 .when(sfn.Condition.string_equals("$.status.Payload.status", "Accepted!"), final_task)))
 
 
@@ -160,10 +162,37 @@ class CdkworkshopStack(core.Stack):
         )
 
         # Create an event when compliance change to trigger the step function
-        custom_rule.on_compliance_change(id='ComplianceChange', 
-                                        event_pattern=event_pattern,
-                                        target=targets.SfnStateMachine(state_machine))
+        events.Rule(self, 'ComplianceESrule',
+                    enabled=True,
+                    event_pattern=event_pattern,
+                    targets=[targets.SfnStateMachine(state_machine)])
+        # custom_rule.on_compliance_change(id='ComplianceChange', 
+        #                                 event_pattern=event_pattern,
+        #                                 target=targets.SfnStateMachine(state_machine))
 
+        # Replication to global table
+        cross_access_role_arn = 'arn:aws:iam::540332926089:role/Capstone_DynamoDBFullAccess'
+        dynamodb_stream_source = event_source.DynamoEventSource(table=table,
+                                                                starting_position=_lambda.StartingPosition.LATEST)
+        replicate_to_global = _lambda.Function(self, 'replicate_stream_global',
+            code=_lambda.Code.inline(code_replicate_to_global),
+            runtime=_lambda.Runtime.PYTHON_3_7,
+            handler='index.handler',
+            timeout=core.Duration.seconds(30),
+            environment={
+                'ROLE_ARN' : cross_access_role_arn
+            }
+        )
+        replicate_to_global.add_event_source(dynamodb_stream_source)
+        
+        replicate_to_global.add_to_role_policy(iam.PolicyStatement(
+                                                effect=iam.Effect.ALLOW,
+                                                actions=["sts:AssumeRole"],
+                                                resources=[cross_access_role_arn]))
+        
+
+
+        # Grants dynamo table
         table.grant_read_write_data(send_email_approval)
         table.grant_read_write_data(check_status_dynamo)
         table.grant_read_write_data(email_approval)
