@@ -32,7 +32,7 @@ def handler(event, context):
     records = event['Records'][0]
     item = records['dynamodb']['NewImage']
     response = 'success'
-    if item.get('status').get('S') in ['non_compliant', 'compliant']:
+    if item.get('status').get('S') in ['NON_COMPLIANT', 'COMPLIANT']:
         item['ID'] = {'S': str(uuid.uuid4())}
         print(item)
         try:

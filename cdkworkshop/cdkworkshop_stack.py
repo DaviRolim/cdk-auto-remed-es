@@ -152,7 +152,7 @@ class CdkworkshopStack(core.Stack):
                                 .next(get_status)
                                 .next(sfn.Choice(self, "Job Complete?")
                                 .when(sfn.Condition.string_equals("$.status.Payload.status", "Rejected!"), wait_x)
-                                .when(sfn.Condition.string_equals("$.status.Payload.status", "non_compliant"), final_task)
+                                .when(sfn.Condition.string_equals("$.status.Payload.status", "NON_COMPLIANT"), final_task)
                                 .when(sfn.Condition.string_equals("$.status.Payload.status", "Accepted!"), final_task)))
 
 

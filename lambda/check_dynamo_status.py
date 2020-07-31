@@ -26,7 +26,7 @@ def update_status(execution_arn, dynamodb=None):
         Key={"execution_arn": execution_arn},
         UpdateExpression="set #stats=:s",
         ExpressionAttributeValues={
-            ':s': 'non_compliant'
+            ':s': 'NON_COMPLIANT'
         },
         ExpressionAttributeNames={
             '#stats': 'status'

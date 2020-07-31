@@ -76,7 +76,7 @@ exports.handler = (event, context, callback) => {
         "resource_id": resourceId,
         "resource_type": resourceType,
         "remediation_type": configAnnotation,
-        "status": "non_compliant"
+        "status": "NON_COMPLIANT"
       }
     };
     console.log("Adding a new item...");
