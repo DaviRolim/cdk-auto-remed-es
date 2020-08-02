@@ -33,12 +33,6 @@ class CdkworkshopStack(core.Stack):
 
         email_param = core.CfnParameter(self, 'email', description='email for sns subscription')
 
-        # Bucket to put lambda bundle
-        # my_bucket = s3.Bucket(self, 'mybucket', bucket_name='cdk-lambda-repository2711')
-        # s3_deployment.BucketDeployment(self, "lambdadeployment",
-        #                                destination_bucket=my_bucket,
-        #                                sources=[s3_deployment.Source.asset('./lambda/bundle.zip')])
-        
         # Dynamo Table
         table = dynamodb.Table(self, "auto-remediation",
             partition_key=dynamodb.Attribute(name="execution_arn", type=dynamodb.AttributeType.STRING),
@@ -192,10 +186,11 @@ class CdkworkshopStack(core.Stack):
         table.grant_read_write_data(email_approval)
         table.grant_read_write_data(restric_es_policy)
 
-        # test purpose (bad practice - delete)
+        # Bucket to put lambda bundle
+        my_bucket = s3.Bucket.from_bucket_attributes(self, 'mybucket', bucket_arn='arn:aws:s3:::lambdarepocapstone-sa')
+
         replicate_to_global = _lambda.Function(self, 'replicate_stream_global',
-            code=_lambda.Code.from_asset('lambda/aurora_conn_bundle.zip'),
-            # code=_lambda.Code.from_bucket(my_bucket, 'lambda/aurora_conn_bundle.zip'),
+            code=_lambda.Code.from_bucket(my_bucket, 'aurora_conn_bundle.zip'),
             runtime=_lambda.Runtime.PYTHON_3_7,
             handler='replicate_to_global_table.handler',
             timeout=core.Duration.seconds(30)
@@ -204,8 +199,3 @@ class CdkworkshopStack(core.Stack):
             # }
         )
         replicate_to_global.add_event_source(dynamodb_stream_source)
-
-        # replicate_to_global.add_to_role_policy(iam.PolicyStatement(
-        #                                     effect=iam.Effect.ALLOW,
-        #                                     actions=["sts:AssumeRole"],
-        #                                     resources=[cross_access_role_arn])
