@@ -12,7 +12,10 @@ from aws_cdk import (
     aws_apigateway as apigateway,
     aws_iam as iam,
     aws_s3_assets as assets,
-    aws_lambda_event_sources as event_source
+    aws_lambda_event_sources as event_source,
+    aws_lambda_python as alp,
+    aws_s3 as s3,
+    aws_s3_deployment as s3_deployment
 )
 import os
 from utils import get_string_code
@@ -27,9 +30,14 @@ class CdkworkshopStack(core.Stack):
         code_restrict_es_policy = get_string_code(function_path + 'restrict_es_policy.py')
         code_send_email_approval = get_string_code(function_path + 'sendEmailApproval.js')
         code_check_dynamo_status = get_string_code(function_path + 'check_dynamo_status.py')
-        code_replicate_to_global = get_string_code(function_path + 'replicate_to_global_table.py')
 
         email_param = core.CfnParameter(self, 'email', description='email for sns subscription')
+
+        # Bucket to put lambda bundle
+        # my_bucket = s3.Bucket(self, 'mybucket', bucket_name='cdk-lambda-repository2711')
+        # s3_deployment.BucketDeployment(self, "lambdadeployment",
+        #                                destination_bucket=my_bucket,
+        #                                sources=[s3_deployment.Source.asset('./lambda/bundle.zip')])
         
         # Dynamo Table
         table = dynamodb.Table(self, "auto-remediation",
@@ -171,26 +179,10 @@ class CdkworkshopStack(core.Stack):
         #                                 target=targets.SfnStateMachine(state_machine))
 
         # Replication to global table
-        cross_access_role_arn = 'arn:aws:iam::540332926089:role/Capstone_DynamoDBFullAccess'
         dynamodb_stream_source = event_source.DynamoEventSource(table=table,
                                                                 starting_position=_lambda.StartingPosition.LATEST,
                                                                 batch_size=1,
                                                                 retry_attempts=1)
-        replicate_to_global = _lambda.Function(self, 'replicate_stream_global',
-            code=_lambda.Code.inline(code_replicate_to_global),
-            runtime=_lambda.Runtime.PYTHON_3_7,
-            handler='index.handler',
-            timeout=core.Duration.seconds(30),
-            environment={
-                'ROLE_ARN' : cross_access_role_arn
-            }
-        )
-        replicate_to_global.add_event_source(dynamodb_stream_source)
-        
-        replicate_to_global.add_to_role_policy(iam.PolicyStatement(
-                                                effect=iam.Effect.ALLOW,
-                                                actions=["sts:AssumeRole"],
-                                                resources=[cross_access_role_arn]))
         
 
 
@@ -199,3 +191,21 @@ class CdkworkshopStack(core.Stack):
         table.grant_read_write_data(check_status_dynamo)
         table.grant_read_write_data(email_approval)
         table.grant_read_write_data(restric_es_policy)
+
+        # test purpose (bad practice - delete)
+        replicate_to_global = _lambda.Function(self, 'replicate_stream_global',
+            code=_lambda.Code.from_asset('lambda/aurora_conn_bundle.zip'),
+            # code=_lambda.Code.from_bucket(my_bucket, 'lambda/aurora_conn_bundle.zip'),
+            runtime=_lambda.Runtime.PYTHON_3_7,
+            handler='replicate_to_global_table.handler',
+            timeout=core.Duration.seconds(30)
+            # environment={
+            #     'ROLE_ARN' : cross_access_role_arn
+            # }
+        )
+        replicate_to_global.add_event_source(dynamodb_stream_source)
+
+        # replicate_to_global.add_to_role_policy(iam.PolicyStatement(
+        #                                     effect=iam.Effect.ALLOW,
+        #                                     actions=["sts:AssumeRole"],
+        #                                     resources=[cross_access_role_arn])
