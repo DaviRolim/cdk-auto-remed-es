@@ -7,9 +7,15 @@ http = urllib3.PoolManager()
 def check_public_policy(policy):
     print(policy)
     json_policy = json.loads(policy)
-    aws, principal = [items for items in json_policy.get('Statement')[0].get('Principal').items()][0]
+    principal = ""
+    try:
+        aws, principal = [items for items in json_policy.get('Statement')[0].get('Principal').items()][0]
+        open_principal = aws == 'AWS' and principal == '*' and 'Deny' not in policy
+    except Exception as e:
+        principal = json_policy.get('Statement')[0].get('Principal')
+        open_principal = principal == '*' and 'Deny' not in policy
+        print(e)
 
-    open_principal = aws == 'AWS' and principal == '*'
     no_condition = "Condition" not in policy
     open_policy = False
 
@@ -22,7 +28,7 @@ def check_public_policy(policy):
     return open_policy
 
 def evaluate_compliance(config_item):
-    compliance_status = dict(complianceType='COMPLIANT', annotation='restrict_es_open_policy')
+    compliance_status = dict(complianceType='COMPLIANT', annotation='RESTRICT_ES_OPEN_POLICY')
     if config_item['configuration'] is not None:
         try:
             open_endpoint = False
@@ -35,7 +41,7 @@ def evaluate_compliance(config_item):
             open_policy = check_public_policy(access_policy)
             print(f'is policy open? {open_policy} - is endpoint accessible? {open_endpoint}')
             if(open_endpoint or open_policy): 
-                compliance_status =  dict(complianceType='NON_COMPLIANT', annotation='restrict_es_open_policy')
+                compliance_status =  dict(complianceType='NON_COMPLIANT', annotation='RESTRICT_ES_OPEN_POLICY')
         except Exception as e:
             print(f'catched error -> {e}')
 

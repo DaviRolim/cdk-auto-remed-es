@@ -71,7 +71,6 @@ exports.handler = (event, context, callback) => {
     TableName:table,
     Item:{
         "execution_arn": executionArn,
-        "time": executionContext.Execution.Input.time,
         "account_id": executionContext.Execution.Input.account,
         "resource_id": resourceId,
         "resource_type": resourceType,

@@ -13,7 +13,6 @@ def item_mapper(item):
   return new_item
 
 def prepare_insert_statement(item):
-    item.pop('time', None)
     columns_list = list(item.keys())  
     values_list = list(item.values())
 
