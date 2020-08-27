@@ -8,6 +8,7 @@ from aws_cdk import (
 )
 from aws_cdk.aws_lambda import IFunction
 from aws_cdk.aws_stepfunctions import IStateMachine
+import constants
 
 import os
 class BaseStack(NestedStack):
@@ -17,7 +18,7 @@ class BaseStack(NestedStack):
         custom_rule = config.CustomRule(self, "Custom",
         configuration_changes=True,
         lambda_function=custom_function,
-        config_rule_name='custom-elasticsearch-public-access-remediation'
+        config_rule_name=constants.CONFIG_RULE_ES_PUBLIC
         )
 
         custom_rule.scope_to_resource("AWS::Elasticsearch::Domain")

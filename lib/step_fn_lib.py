@@ -6,6 +6,8 @@ from aws_cdk import (
 )
 from lib.lambda_lib import LambdaLib
 
+import constants
+
 class StepFunctionsLib(Construct):
     def __init__(self, scope: Construct, id: str, functions: LambdaLib, **kwargs) -> None:
         super().__init__(scope, id)
@@ -31,12 +33,18 @@ class StepFunctionsLib(Construct):
             lambda_function=functions.restric_es_policy,
             payload=sfn.TaskInput.from_object({'ExecutionContext.$': '$$'}),
         )
+
+        restrict_es_condition = sfn.Condition.string_equals("$.detail.additionalEventData.configRuleName", constants.CONFIG_RULE_ES_PUBLIC)
+
         definition = (submit_job.next(wait_x)
                                 .next(get_status)
                                 .next(sfn.Choice(self, "Job Complete?")
                                 .when(sfn.Condition.string_equals("$.status.Payload.status", "Rejected!"), wait_x)
-                                .when(sfn.Condition.string_equals("$.status.Payload.status", "NON_COMPLIANT"), final_task)
-                                .when(sfn.Condition.string_equals("$.status.Payload.status", "Accepted!"), final_task)))
+                                # .when(sfn.Condition.string_equals("$.status.Payload.status", "NON_COMPLIANT"), final_task)
+                                # .when(sfn.Condition.string_equals("$.status.Payload.status", "Accepted!"), final_task))
+                                .otherwise(sfn.Choice(self, "Remediation Choice")
+                                .when(restrict_es_condition, final_task)))
+                                )
 
 
         self.state_machine = sfn.StateMachine(self, "StateMachine",

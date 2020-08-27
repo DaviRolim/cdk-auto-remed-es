@@ -1,0 +1,1 @@
+CONFIG_RULE_ES_PUBLIC = 'custom-elasticsearch-public-access-remediation'
