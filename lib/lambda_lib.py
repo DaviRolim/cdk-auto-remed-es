@@ -51,7 +51,7 @@ class LambdaLib(Construct):
 
         self.my_lambda = _lambda.Function(
             self, 'custom_config_ES',
-            code=_lambda.Code.inline(get_code('custom_config.py')),
+            code=_lambda.Code.inline(get_code('restrict_es_custom_config.py')),
             **common_runtimes
         )
 
@@ -78,7 +78,23 @@ class LambdaLib(Construct):
             }
         )
 
+        self.restric_rds_policy = _lambda.Function(
+            self, 'RestricRDS',
+            **common_runtimes,
+            code=_lambda.Code.inline(get_code('restrict_rds.py')),
+            # environment={
+            #     'DYNAMOTABLE' : props.table_name
+            # }
+        )
+
+        self.custom_config_rds = _lambda.Function(
+            self, 'custom_config_RDS',
+            code=_lambda.Code.inline(get_code('public_rds_custom_config.py')),
+            **common_runtimes
+        )
+
         self.add_role_restric_es()
+        self.add_role_restrict_rds()
 
         
     def stream_lambda_source(self, table: dynamo.ITable, function: _lambda.IFunction):
@@ -94,3 +110,12 @@ class LambdaLib(Construct):
                                                 effect=iam.Effect.ALLOW,
                                                 actions=["es:*"],
                                                 resources=["*"]))
+
+    def add_role_restrict_rds(self):
+        statement = iam.PolicyStatement(effect=iam.Effect.ALLOW,
+                                        actions=["rds:*", "ec2:*"],
+                                        resources=["*"])
+
+        self.restric_rds_policy.add_to_role_policy(statement)
+
+        self.custom_config_rds.add_to_role_policy(statement)

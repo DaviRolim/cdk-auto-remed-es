@@ -29,12 +29,18 @@ class StepFunctionsLib(Construct):
             result_path="$.status"
         )
 
-        final_task = tasks.LambdaInvoke(self, "Restric ES Policy",
+        restrict_es = tasks.LambdaInvoke(self, "Restric ES Policy",
             lambda_function=functions.restric_es_policy,
             payload=sfn.TaskInput.from_object({'ExecutionContext.$': '$$'}),
         )
 
+        restrict_rds = tasks.LambdaInvoke(self, "Restric RDS",
+            lambda_function=functions.restric_rds_policy,
+            payload=sfn.TaskInput.from_object({'ExecutionContext.$': '$$'}),
+        )
+
         restrict_es_condition = sfn.Condition.string_equals("$.detail.additionalEventData.configRuleName", constants.CONFIG_RULE_ES_PUBLIC)
+        restrict_rds_condition = sfn.Condition.string_equals("$.detail.additionalEventData.configRuleName", constants.CONFIG_RULE_RDS_PUBLIC)
 
         definition = (submit_job.next(wait_x)
                                 .next(get_status)
@@ -43,7 +49,8 @@ class StepFunctionsLib(Construct):
                                 # .when(sfn.Condition.string_equals("$.status.Payload.status", "NON_COMPLIANT"), final_task)
                                 # .when(sfn.Condition.string_equals("$.status.Payload.status", "Accepted!"), final_task))
                                 .otherwise(sfn.Choice(self, "Remediation Choice")
-                                .when(restrict_es_condition, final_task)))
+                                .when(restrict_es_condition, restrict_es)
+                                .when(restrict_rds_condition, restrict_rds)))
                                 )
 
 

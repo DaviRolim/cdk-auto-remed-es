@@ -9,7 +9,7 @@ main_stack = Stack(app, 'Main')
 
 email_param = CfnParameter(main_stack, 'email', description='email for sns subscription').value_as_string
 app_stack = CoreStack(main_stack, 'AppStack', email=email_param)
-base_stack = BaseStack(main_stack, 'BaseStack', app_stack.functions.my_lambda, app_stack.step_fn.state_machine)
+base_stack = BaseStack(main_stack, 'BaseStack', app_stack.functions.my_lambda, app_stack.functions.custom_config_rds, app_stack.step_fn.state_machine)
 
 #CdkworkshopStack(app, "projetox", env={'region': 'sa-east-1', 'account': os.environ['CDK_DEFAULT_ACCOUNT']})
 

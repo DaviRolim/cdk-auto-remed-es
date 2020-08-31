@@ -46,10 +46,7 @@ class CoreStack(NestedStack):
 
 
         self.grant_permissions()
-        '''
-         Grants (????? TODO) the ideia is to put all grants into the same place 
-         so I can quickly check if I have some permissions issues
-        '''
+        
     def grant_permissions(self):
         self.my_topic.grant_publish(self.functions.send_email_approval)
         self.table.grant_read_write_data(self.functions.send_email_approval)
