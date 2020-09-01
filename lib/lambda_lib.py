@@ -96,6 +96,21 @@ class LambdaLib(Construct):
         self.add_role_restric_es()
         self.add_role_restrict_rds()
 
+        self.sechub_custom_new = _lambda.Function(
+            self, 'sechub_custom_new',
+            code=_lambda.Code.inline(get_code('sechub_custom_new.py')),
+            **common_runtimes
+        )
+
+        self.sechub_custom_solved = _lambda.Function(
+            self, 'sechub_custom_solved',
+            code=_lambda.Code.inline(get_code('sechub_custom_solved.py')),
+            **common_runtimes
+        )
+
+        self.add_role_security_hub(self.sechub_custom_new)
+        self.add_role_security_hub(self.sechub_custom_solved)
+
         
     def stream_lambda_source(self, table: dynamo.ITable, function: _lambda.IFunction):
         dynamodb_stream_source = event_source.DynamoEventSource(table=table,
@@ -117,5 +132,10 @@ class LambdaLib(Construct):
                                         resources=["*"])
 
         self.restric_rds_policy.add_to_role_policy(statement)
-
         self.custom_config_rds.add_to_role_policy(statement)
+
+    def add_role_security_hub(self, function: _lambda.IFunction):
+        statement = iam.PolicyStatement(effect=iam.Effect.ALLOW,
+                                        actions=["securityhub:*"],
+                                        resources=["*"])
+        function.add_to_role_policy(statement)

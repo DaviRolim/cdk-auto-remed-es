@@ -13,6 +13,18 @@ class StepFunctionsLib(Construct):
         super().__init__(scope, id)
 
         # Step Function
+        send_to_sechub = tasks.LambdaInvoke(self, "Sechub Findings",
+            lambda_function=functions.sechub_custom_new,
+            # payload=sfn.TaskInput.from_object({'ExecutionContext.$': '$$'}),
+            result_path=sfn.JsonPath.DISCARD
+        )
+
+        resolved_sechub = tasks.LambdaInvoke(self, "Sechub Resolved Status",
+            lambda_function=functions.sechub_custom_solved,
+            # payload=sfn.TaskInput.from_object({'ExecutionContext.$': '$$'}),
+            result_path=sfn.JsonPath.DISCARD
+        )
+
         submit_job = tasks.LambdaInvoke(self, "Submit Job",
             lambda_function=functions.send_email_approval,
             payload=sfn.TaskInput.from_object({'ExecutionContext.$': '$$'}),
@@ -32,17 +44,20 @@ class StepFunctionsLib(Construct):
         restrict_es = tasks.LambdaInvoke(self, "Restric ES Policy",
             lambda_function=functions.restric_es_policy,
             payload=sfn.TaskInput.from_object({'ExecutionContext.$': '$$'}),
+            result_path=sfn.JsonPath.DISCARD
         )
 
         restrict_rds = tasks.LambdaInvoke(self, "Restric RDS",
             lambda_function=functions.restric_rds_policy,
             payload=sfn.TaskInput.from_object({'ExecutionContext.$': '$$'}),
+            result_path=sfn.JsonPath.DISCARD
         )
 
         restrict_es_condition = sfn.Condition.string_equals("$.detail.additionalEventData.configRuleName", constants.CONFIG_RULE_ES_PUBLIC)
         restrict_rds_condition = sfn.Condition.string_equals("$.detail.additionalEventData.configRuleName", constants.CONFIG_RULE_RDS_PUBLIC)
 
-        definition = (submit_job.next(wait_x)
+        definition = (send_to_sechub.next(submit_job)
+                                .next(wait_x)
                                 .next(get_status)
                                 .next(sfn.Choice(self, "Job Complete?")
                                 .when(sfn.Condition.string_equals("$.status.Payload.status", "Rejected!"), wait_x)
@@ -50,7 +65,7 @@ class StepFunctionsLib(Construct):
                                 # .when(sfn.Condition.string_equals("$.status.Payload.status", "Accepted!"), final_task))
                                 .otherwise(sfn.Choice(self, "Remediation Choice")
                                 .when(restrict_es_condition, restrict_es)
-                                .when(restrict_rds_condition, restrict_rds)))
+                                .when(restrict_rds_condition, restrict_rds).afterwards().next(resolved_sechub)))
                                 )
 
 
