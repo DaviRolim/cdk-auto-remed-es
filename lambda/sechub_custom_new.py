@@ -12,6 +12,17 @@ logger.setLevel(logging.INFO)
 
 sechubclient = boto3.client('securityhub')
 
+def get_arn(resource_type, region, account_id, resource_id):
+	elastic_search = "AWS::Elasticsearch::Domain"
+	rds = "AWS::RDS::DBInstance"
+	arn = ""
+	if resource_type == elastic_search:
+		arn = f"arn:aws:es:{region}:{account_id}:domain/{resource_id}"
+		pass
+	elif resource_type == rds:
+		arn = f"arn:aws:rds:{region}:{account_id}:db/{resource_id}"
+
+	return arn
 def handler(event, context):
 	logger.info('Event Data')
 	logger.info(event)
@@ -27,7 +38,7 @@ def handler(event, context):
 	# account_id = event["detail"]["awsAccountId"]
 	# resource_id = event["detail"]["newEvaluationResult"]["evaluationResultIdentifier"]["evaluationResultQualifier"]["resourceId"]
 	region = event["detail"]["awsRegion"]
-
+	arn = get_arn(compliance_resource_type,region, account_id, resource_id)
 
 	if compliance_type == 'NON_COMPLIANT':
 		logger.info("Resource is out of compliance")
@@ -53,7 +64,7 @@ def handler(event, context):
     		},
     		"Resources": [{
         		"Type": compliance_resource_type,
-        		"Id": f"arn:aws:es:{region}:{account_id}:domain/{resource_id}" # FIXED WORKING ONLY FOR ES DOMAINS (TODO)
+        		"Id": arn
         		# "Id": f"arn:aws:ec2:{region}:{account_id}:instance/{resource_id}"
     		}]
 		}]
